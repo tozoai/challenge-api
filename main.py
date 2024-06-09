@@ -1,60 +1,125 @@
-from flask import Flask, request, json, Response
+from flask import Flask, request, jsonify
+from flask_jwt_extended import JWTManager, create_access_token, jwt_required, get_jwt_identity, verify_jwt_in_request
+from werkzeug.security import generate_password_hash, check_password_hash
 from pymongo import MongoClient
-from pydantic import BaseModel, Field, EmailStr
-from typing import Optional
-from bson import ObjectId
-from bson.json_util import dumps
-from flask import jsonify
-
+import os
 
 app = Flask(__name__)
-app.config["DEBUG"] = True
+app.config['JWT_SECRET_KEY'] = 'PUT_ME_IN_A_CONF_FILE'
+jwt = JWTManager(app)
 
-class PydanticObjectId(ObjectId):
-    @classmethod
-    def __get_validators__(cls):
-        yield cls.validate
+client = MongoClient('mongodb://localhost:5000/data?retryWrites=true&w=majority')
+db = client['data']
+usuarios_collection = db['usuarios']
+proveedores_collection = db['proveedores']
 
-    @classmethod
-    def validate(cls, v):
-        if not ObjectId.is_valid(v):
-            raise ValueError("Invalid objectid")
-        return ObjectId(v)
+class Usuario:
+    def __init__(self, username, password, role):
+        self.username = username
+        self.password = generate_password_hash(password)
+        self.role = role
 
-    @classmethod
-    def __modify_schema__(cls, field_schema):
-        field_schema.update(type="string")
+    def save_to_db(self):
+        usuarios_collection.insert_one({
+            'username': self.username,
+            'password': self.password,
+            'role': self.role
+        })
 
-class Proveedores(BaseModel):
-    id: int
-    Nombre: str
-    Razon_Social: str
-    Nombre_Contato: str
-    email: EmailStr
-    Direccion_Fiscal: str
-    Tipo_Servicio: str
-    Criticidad: str
-    
-client = MongoClient("mongodb://localhost:5000/data?retryWrites=true&w=majority")
+def get_user(username):
+    return usuarios_collection.find_one({'username': username})
 
-db = client['data'] 
-collection = db['proveedores']
+class Proveedor:
+    def __init__(self, id, nombre, razon_social, nombre_contacto, email, direccion_fiscal, tipo_servicio, criticidad, bloqueo):
+        self.id = id
+        self.nombre = nombre
+        self.razon_social = razon_social
+        self.nombre_contacto = nombre_contacto
+        self.email = email
+        self.direccion_fiscal = direccion_fiscal
+        self.tipo_servicio = tipo_servicio
+        self.criticidad = criticidad
+        self.bloqueo = bloqueo
+    def save_to_db(self):
+        proveedores_collection.insert_one(self.__dict__)
+
+# Utility functions
+def authenticate_user(username, password):
+    user = get_user(username)
+    if user and check_password_hash(user['password'], password):
+        return user
+    return None
+
+@app.route('/auth', methods=['POST'])
+def login():
+    data = request.get_json()
+    username = data.get('username')
+    password = data.get('password')
+    user = authenticate_user(username, password)
+    if not user:
+        return jsonify({"msg": "Bad username or password"}), 401
+    access_token = create_access_token(identity={'username': user['username'], 'role': user['role']})
+    return jsonify(access_token=access_token)
+
+@app.route('/auth', methods=['PUT'])
+def create_user():
+    data = request.get_json()
+    username = data.get('username')
+    password = data.get('password')
+    role = data.get('role')
+    if get_user(username):
+        return jsonify({"msg": "User already exists"}), 400
+
+    # Allow creating the first user (admin) without authentication
+    if usuarios_collection.count_documents({}) == 0:
+        new_user = Usuario(username, password, role)
+        new_user.save_to_db()
+        return jsonify({"msg": "Admin user created successfully"}), 201
+
+    # For subsequent users, require admin role
+    current_user = get_jwt_identity()
+    if not current_user or current_user['role'] != 'admin':
+        return jsonify({"msg": "Admin privilege required"}), 403
+
+    new_user = Usuario(username, password, role)
+    new_user.save_to_db()
+    return jsonify({"msg": "User created successfully"}), 201
+
+@app.route('/proveedores', methods=['PUT'])
+@jwt_required()
+def create_supplier():
+    current_user = get_jwt_identity()
+    if current_user['role'] != 'admin':
+        return jsonify({"msg": "Admin privilege required"}), 403
+    data = request.get_json()
+    supplier = Proveedor(**data)
+    supplier.save_to_db()
+    return jsonify({"msg": "Supplier created successfully"}), 201
 
 @app.route('/proveedores', methods=['GET'])
+@jwt_required()
+def get_suppliers():
+    verify_jwt_in_request()
+    current_user = get_jwt_identity()
+    if current_user['role'] != 'admin':
+        proveedores_desbloqueados = list(proveedores_collection.find({'bloqueo': False}, {'_id': False}))
+        return jsonify(proveedores_desbloqueados)
+        suppliers = list(proveedores_collection.find({}, {'_id': False}))
+        return jsonify(suppliers)
+    suppliers = list(proveedores_collection.find({}, {'_id': False}))
+    return jsonify(suppliers)
 
-def get_proveedores():
-
-    proveedores = list(collection.find())
-    return jsonify(dumps(proveedores))  # convert BSON to JSON
-
-
-@app.route('/', methods=['GET'])
-
-def home():
-    return '''<head>API Challenge</head><br>
-      <p>This is the default API Response   </p>
-      
-      '''
+@app.route('/proveedores/<int:id>', methods=['GET'])
+@jwt_required()
+def get_supplier(id):
+    current_user = get_jwt_identity()
+    if current_user['role'] != 'admin':
+        return jsonify({"msg": "Admin privilege required"}), 403
+    supplier = proveedores_collection.find_one({'id': id}, {'_id': False})
+    if not supplier:
+        return jsonify({"msg": "Supplier not found"}), 404
+    return jsonify(supplier)
 
 if __name__ == '__main__':
-    app.run(host="0.0.0.0", port=20000)
+    app.run(host="0.0.0.0", port=80)
+
