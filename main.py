@@ -2,10 +2,14 @@ from flask import Flask, request, jsonify
 from flask_jwt_extended import JWTManager, create_access_token, jwt_required, get_jwt_identity, verify_jwt_in_request
 from werkzeug.security import generate_password_hash, check_password_hash
 from pymongo import MongoClient
+from config import config
 import os
 
 app = Flask(__name__)
-app.config['JWT_SECRET_KEY'] = 'PUT_ME_IN_A_CONF_FILE'
+
+env = os.environ.get('FLASK_ENV', 'default')
+app.config.from_object(config[env])
+
 jwt = JWTManager(app)
 
 client = MongoClient('mongodb://localhost:5000/data?retryWrites=true&w=majority')
@@ -30,20 +34,24 @@ def get_user(username):
     return usuarios_collection.find_one({'username': username})
 
 class Proveedor:
-    def __init__(self, id, nombre, razon_social, nombre_contacto, email, direccion_fiscal, tipo_servicio, criticidad, bloqueo):
-        self.id = id
+    def __init__(self, nombre, razon_social, nombre_contato, email, direccion_fiscal, tipo_servicio, criticidad, bloqueo):
         self.nombre = nombre
         self.razon_social = razon_social
-        self.nombre_contacto = nombre_contacto
+        self.nombre_contato = nombre_contato
         self.email = email
         self.direccion_fiscal = direccion_fiscal
         self.tipo_servicio = tipo_servicio
         self.criticidad = criticidad
         self.bloqueo = bloqueo
+        self._id = None  
+
+    def save_to_db(self):
+        result = proveedores_collection.insert_one(self.__dict__) 
+        self._id = result.inserted_id 
+
     def save_to_db(self):
         proveedores_collection.insert_one(self.__dict__)
 
-# Utility functions
 def authenticate_user(username, password):
     user = get_user(username)
     if user and check_password_hash(user['password'], password):
@@ -59,7 +67,7 @@ def login():
     if not user:
         return jsonify({"msg": "Bad username or password"}), 401
     access_token = create_access_token(identity={'username': user['username'], 'role': user['role']})
-    return jsonify(access_token=access_token)
+    return jsonify(access_token=access_token), 200
 
 @app.route('/auth', methods=['PUT'])
 def create_user():
@@ -104,22 +112,27 @@ def get_suppliers():
     if current_user['role'] != 'admin':
         proveedores_desbloqueados = list(proveedores_collection.find({'bloqueo': False}, {'_id': False}))
         return jsonify(proveedores_desbloqueados)
-        suppliers = list(proveedores_collection.find({}, {'_id': False}))
-        return jsonify(suppliers)
+
     suppliers = list(proveedores_collection.find({}, {'_id': False}))
     return jsonify(suppliers)
 
-@app.route('/proveedores/<int:id>', methods=['GET'])
+@app.route('/proveedores/busca', methods=['GET'])
 @jwt_required()
-def get_supplier(id):
+def search_supplier():
     current_user = get_jwt_identity()
+    query_params = ['nombre', 'criticidad', 'tipo_servicio']
+    
+    query = {param: request.args[param] for param in query_params if param in request.args}
+
     if current_user['role'] != 'admin':
-        return jsonify({"msg": "Admin privilege required"}), 403
-    supplier = proveedores_collection.find_one({'id': id}, {'_id': False})
-    if not supplier:
-        return jsonify({"msg": "Supplier not found"}), 404
-    return jsonify(supplier)
+        query['bloqueo'] = False
+
+    suppliers = list(proveedores_collection.find(query, {'_id': False}))
+    
+    if not suppliers:
+        return jsonify({"msg": "Suppliers not found"}), 404
+        
+    return jsonify(suppliers)
 
 if __name__ == '__main__':
     app.run(host="0.0.0.0", port=80)
-
