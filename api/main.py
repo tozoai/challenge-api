@@ -2,22 +2,22 @@ from flask import Flask, request, jsonify
 from flask_jwt_extended import JWTManager, create_access_token, jwt_required, get_jwt_identity, verify_jwt_in_request
 from werkzeug.security import generate_password_hash, check_password_hash
 from pymongo import MongoClient
-#from bson.objectid import ObjectId
+from bson.objectid import ObjectId
 import os
 
 app = Flask(__name__)
 
 app.config['JWT_SECRET_KEY'] = os.environ.get('JWT_SECRET_KEY')
 if not app.config['JWT_SECRET_KEY']:
-    raise RuntimeError('JWT_SECRET_KEY is not set!')
+    raise RuntimeError('Environment variable JWT_SECRET_KEY is not set, exiting...')
 
-app.config['MONGO_AUTH'] = os.environ.get('MONGO_AUTH')
-if not app.config['MONGO_AUTH']:
-    raise RuntimeError('MONGO_AUTH is not set!')
+app.config['MONGO_URI'] = os.environ.get('MONGO_URI')
+if not app.config['MONGO_URI']:
+    raise RuntimeError('Environment variable MONGO_URI is not set, exiting...')
 
 jwt = JWTManager(app)
 
-client = MongoClient('mongodb://localhost:5000/data?retryWrites=true&w=majority')
+client = MongoClient(app.config['MONGO_URI'])
 db = client['data']
 usuarios_collection = db['usuarios']
 proveedores_collection = db['proveedores']
@@ -37,6 +37,12 @@ class Usuario:
 
 def get_user(username):
     return usuarios_collection.find_one({'username': username})
+
+def sanitize_get_jwt():
+    try:
+        return get_jwt_identity()
+    except Exception:
+        return None
 
 class Proveedor:
     def __init__(self, nombre, razon_social, nombre_contato, email, direccion_fiscal, tipo_servicio, criticidad, bloqueo):
@@ -78,15 +84,17 @@ def create_user():
     role = data.get('role')
     if get_user(username):
         return jsonify({"msg": "User already exists"}), 400
-
+    
     # Primero usuario no necessita auth
     if usuarios_collection.count_documents({}) == 0:
-        new_user = Usuario(username, password, role)
+        new_user = Usuario(username, password, "admin")
         new_user.save_to_db()
         return jsonify({"msg": "Admin user created successfully"}), 201
-    current_user = get_jwt_identity()
-    if not current_user or current_user['role'] != 'admin':
-        return jsonify({"msg": "Admin privilege required"}), 403
+    
+    current_user = sanitize_get_jwt()
+    if current_user is None or current_user.get('role') != 'admin':
+       return jsonify({"msg": "Admin privilege required"}), 403
+    
     new_user = Usuario(username, password, role)
     new_user.save_to_db()
     return jsonify({"msg": "User created successfully"}), 201
@@ -147,4 +155,4 @@ def busca_proveedor():
     return jsonify(proveedores)
 
 if __name__ == '__main__':
-    app.run(host="0.0.0.0", port=80)
+    app.run(host="0.0.0.0", port=8080)
