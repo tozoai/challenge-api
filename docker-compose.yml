@@ -1,0 +1,32 @@
+services:
+  web:
+    build: api 
+    ports:
+      - "8080:8080"
+    environment:
+      - JWT_SECRET_KEY=098f0a9s8df0a9s8df0a9s8d0fa8sd09f8as0d8f0as9d8fa0s9d8f0asd8f0a9
+      - MONGO_URI=mongodb://mongouser:mongopass@db:27017
+    depends_on:
+      - db
+      #networks:
+      #- public
+      #      - internal
+
+  db:
+    build: db 
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=mongouser
+      - MONGO_INITDB_ROOT_PASSWORD=mongopass
+      - MONGO_INITDB_DATABASE=data
+    #volumes:
+       # ./mongodb.pem:/etc/ssl/mongodb.pem
+       # mongo-data:/data/db
+    #command: mongod --tlsMode requireTLS --tlsCertificateKeyFile /etc/ssl/mongodb.pem
+    ports:
+      - "27017:27017"
+      #networks:
+    #   - internal
+
+      #networks:
+    # public:
+    #  internal:
