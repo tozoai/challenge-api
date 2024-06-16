@@ -2,8 +2,7 @@
 FROM python:3.12-slim
 
 # Set the working directory in the container
-WORKDIR /workspace
-
+WORKDIR workspace
 COPY . .
 
 # Install any needed packages specified in requirements.txt
