@@ -1,25 +1,21 @@
 #!/bin/bash
 
+if [ -z "$1" ]; then
+  echo "Usage: $0 <endpoint>"
+  exit 1
+fi
 
-AUTH_URL="$1"
-PROVEEDORES="$1"
+ENDPOINT="http://$1/"
 USERNAME="username"
 PASSWORD="password"
 
-echo "$AUTH_URL"
-echo "$PROVEEDORES"
-
-pause(){
-	read -p "Press [Enter] key to continue..."
-}   
-
 # CREATE FIRST USER
-TOKEN=$(curl -s -X PUT "$AUTH_URL" \
+RESPONSE=$(curl -s -X PUT "$ENDPOINT/auth" \
     -H "Content-Type: application/json" \
     -d "{\"username\":\"$USERNAME\", \"password\":\"$PASSWORD\"}")
 
-# Perform authentication 
-TOKEN=$(curl -s -X POST "$AUTH_URL" \
+# Perform authentication
+TOKEN=$(curl -s -X POST "$ENDPOINT/auth" \
     -H "Content-Type: application/json" \
     -d "{\"username\":\"$USERNAME\", \"password\":\"$PASSWORD\"}" \
     | jq -r '.access_token')
@@ -30,9 +26,8 @@ if [ "$TOKEN" == "null" ] || [ -z "$TOKEN" ]; then
     exit 1
 fi
 
-echo "Authentication successful. 
+echo "Authentication successful."
 
 # Use the JWT token for a subsequent request
-curl -s -X GET "$PROVEEDORES" \
+curl -s -X GET "$ENDPOINT/proveedores" \
     -H "Authorization: Bearer $TOKEN"
-
