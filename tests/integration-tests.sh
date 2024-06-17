@@ -1,26 +1,34 @@
 #!/bin/bash
 
+# Function to make a curl request
+make_curl_request() {
+    local method="$1"
+    local url="$2"
+    local data="$3"
+    local token="$4"
+
+    curl -s -X "$method" "$url" \
+        -H "Authorization: Bearer $token" \
+        -H "Content-Type: application/json" \
+        -d "$data"
+}
+
 if [ -z "$1" ]; then
   echo "Usage: $0 <endpoint>"
   exit 1
 fi
 
-ENDPOINT="http://$1"
+ENDPOINT="$1"
 USERNAME="admin"
 PASSWORD="adminpassword"
 
 # CREATE FIRST USER (Admin)
-RESPONSE=$(curl -s -X PUT "$ENDPOINT/auth" \
-    -H "Content-Type: application/json" \
-    -d "{\"username\":\"$USERNAME\", \"password\":\"$PASSWORD\", \"role\":\"admin\"}")
+RESPONSE=$(make_curl_request "PUT" "$ENDPOINT/auth" "{\"username\":\"$USERNAME\", \"password\":\"$PASSWORD\", \"role\":\"admin\"}")
 
 echo "Response from creating first user: $RESPONSE"
 
 # Perform authentication
-TOKEN=$(curl -s -X POST "$ENDPOINT/auth" \
-    -H "Content-Type: application/json" \
-    -d "{\"username\":\"$USERNAME\", \"password\":\"$PASSWORD\"}" \
-    | jq -r '.access_token')
+TOKEN=$(make_curl_request "POST" "$ENDPOINT/auth" "{\"username\":\"$USERNAME\", \"password\":\"$PASSWORD\"}" | jq -r '.access_token')
 
 # Check if the token was successfully extracted
 if [ "$TOKEN" == "null" ] || [ -z "$TOKEN" ]; then
@@ -36,10 +44,7 @@ for i in {1..3}; do
   PASSWORD="password$i"
   ROLE="user"
 
-  RESPONSE=$(curl -s -X PUT "$ENDPOINT/auth" \
-      -H "Authorization: Bearer $TOKEN" \
-      -H "Content-Type: application/json" \
-      -d "{\"username\":\"$USERNAME\", \"password\":\"$PASSWORD\", \"role\":\"usuario\"}")
+  RESPONSE=$(make_curl_request "PUT" "$ENDPOINT/auth" "{\"username\":\"$USERNAME\", \"password\":\"$PASSWORD\", \"role\":\"usuario\"}")
 
   echo "Response from creating user $i: $RESPONSE"
 done
@@ -60,16 +65,12 @@ for i in {1..3}; do
 EOF
   )
 
-  RESPONSE=$(curl -s -X PUT "$ENDPOINT/proveedores" \
-      -H "Authorization: Bearer $TOKEN" \
-      -H "Content-Type: application/json" \
-      -d "$PROVEEDOR_DATA")
+  RESPONSE=$(make_curl_request "PUT" "$ENDPOINT/proveedores" "$PROVEEDOR_DATA" "$TOKEN")
 
   echo "Response from creating proveedor $i: $RESPONSE"
 done
 
 # Perform a search for proveedores
-SEARCH_RESPONSE=$(curl -s -X GET "$ENDPOINT/proveedores/busca?nombre=Proveedor" \
-    -H "Authorization: Bearer $TOKEN")
+SEARCH_RESPONSE=$(make_curl_request "GET" "$ENDPOINT/proveedores/busca?nombre=Proveedor" "" "$TOKEN")
 
 echo "Search response: $SEARCH_RESPONSE"
