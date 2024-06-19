@@ -1,3 +1,4 @@
+import datetime
 from flask import Flask, request, jsonify
 from flask_jwt_extended import JWTManager, create_access_token, jwt_required, get_jwt_identity, verify_jwt_in_request
 from flask_limiter.wrappers import Limit
@@ -8,20 +9,21 @@ from flask_limiter.util import get_remote_address
 from pymongo import MongoClient
 from bson.objectid import ObjectId
 import os
+import re
 
-flask_app = Flask(__name__)
+application = Flask(__name__)
 
-flask_app.config['JWT_SECRET_KEY'] = os.environ.get('JWT_SECRET_KEY')
-if not flask_app.config['JWT_SECRET_KEY']:
+application.config['JWT_SECRET_KEY'] = os.environ.get('JWT_SECRET_KEY')
+if not application.config['JWT_SECRET_KEY']:
     raise RuntimeError('Environment variable JWT_SECRET_KEY is not set, exiting...')
 
-flask_app.config['MONGO_URI'] = os.environ.get('MONGO_URI')
-if not flask_app.config['MONGO_URI']:
+application.config['MONGO_URI'] = os.environ.get('MONGO_URI')
+if not application.config['MONGO_URI']:
     raise RuntimeError('Environment variable MONGO_URI is not set, exiting...')
 
-jwt = JWTManager(flask_app)
+jwt = JWTManager(application)
 
-client = MongoClient(flask_app.config['MONGO_URI'])
+client = MongoClient(application.config['MONGO_URI'])
 db = client['data']
 usuarios_collection = db['usuarios']
 proveedores_collection = db['proveedores']
@@ -29,11 +31,11 @@ proveedores_collection = db['proveedores']
 # Models
 
 class Usuario:
-    def __init__(self, username, password, role):
+    def __init__(self, username, password, role, creation_data):
         self.username = username
         self.password = generate_password_hash(password)
         self.role = role
-        #self.creation_data = datetime.datetime.now()
+        self.creation_data = datetime.datetime.now()
         #self.parent_user = parent_user
         #self.last_login = None
         
@@ -41,8 +43,8 @@ class Usuario:
         usuarios_collection.insert_one({
             'username': self.username,
             'password': self.password,
-            'role': self.role
-            # 'creation_data': self.creation_data,
+            'role': self.role,
+            'creation_data': self.creation_data,
             # 'parent_user': self.parent_user,
             # 'last_login': self.last_login
         })
@@ -77,11 +79,11 @@ def sanitize_get_jwt():
 
 limiter = Limiter(
     get_remote_address,
-    app=flask_app,
-    default_limits=["200 per day", "5 per minute"]
+    app=application,
+    default_limits=["1000 per day", "30 per minute"]
 )
 
-@flask_app.after_request 
+@application.after_request 
 def add_security_headers(response):
     response.headers['Strict-Transport-Security'] = 'max-age=31536000; includeSubDomains'
     response.headers['X-Content-Type-Options'] = 'nosniff'
@@ -100,28 +102,39 @@ def authenticate_user(username, password):
     if user and check_password_hash(user['password'], password):
          return user
     return None
+    
+def validate_username(username):
+    pattern = r'^[A-Za-z0-9]{4,12}$'
+    return re.match(pattern, username) is not None
 
-@flask_app.route('/auth', methods=['POST'])
+def validate_password(password):
+    pattern = r'^.*[a-zA-Z0])(?=.*\d)[a-zA-Z\d]{8,}$'
+    return re.match(pattern, password) is not None
+
+@application.route('/auth', methods=['POST'])
+# strict rate limit 
+@limiter.limit("5 per minute")
 def login():
-    try: 
-        data = request.get_json()
-        username = data.get('username')
-        password = data.get('password')
-        user = authenticate_user(username, password)
-        if not user:
-            return jsonify({"msg": "Bad username or password"}), 401
-        access_token = create_access_token(identity={'username': user['username'], 'role': user['role']})
-        return jsonify(access_token=access_token), 200            
-    except RateLimitExceeded:
-        return jsonify({"msg": "Rate limit exceeded"}), 429
+    data = request.get_json()
+    username = data.get('username')
+    password = data.get('password')
+    user = authenticate_user(username, password)
+    if not user:
+        return jsonify({"msg": "Bad username or password"}), 401
+    access_token = create_access_token(identity={'username': user['username'], 'role': user['role']})
+    return jsonify(access_token=access_token), 200            
 
-@flask_app.route('/auth', methods=['PUT'])
+@application.route('/auth', methods=['PUT'])
 @limiter.limit("3 per minute")
 def create_user():
     data = request.get_json()
     username = data.get('username')
     password = data.get('password')
     role = data.get('role')
+    if not validate_username(username):
+        return jsonify({"msg": "Invalid Username length"}), 400
+    if not validate_password(password):
+        return jsonify({"msg": "Password complexity Enabled"}), 400
     if get_user(username):
         return jsonify({"msg": "User already exists"}), 400
     
@@ -130,7 +143,6 @@ def create_user():
         new_user = Usuario(username, password, "admin")
         new_user.save_to_db()
         return jsonify({"msg": "Admin user created successfully"}), 201
-    
     current_user = sanitize_get_jwt()
     if current_user is None or current_user.get('role') != 'admin':
        return jsonify({"msg": "Admin privilege required"}), 403
@@ -139,7 +151,7 @@ def create_user():
     new_user.save_to_db()
     return jsonify({"msg": "User created successfully"}), 201
 
-@flask_app.route('/proveedores', methods=['PUT'])
+@application.route('/proveedores', methods=['PUT'])
 @jwt_required()
 def create_proveedor():
     current_user = get_jwt_identity()
@@ -150,7 +162,7 @@ def create_proveedor():
     proveedor.save_to_db()
     return jsonify({"msg": "Created successfully"}), 201
 
-@flask_app.route('/proveedores/atualiza/<id>', methods=['PATCH'])
+@application.route('/proveedores/atualiza/<id>', methods=['PATCH'])
 @jwt_required()
 def update_proveedor(id):
     verify_jwt_in_request()
@@ -166,7 +178,7 @@ def update_proveedor(id):
     else:
         return jsonify({"msg": "Bad Request"}), 400
 
-@flask_app.route('/proveedores', methods=['GET'])
+@application.route('/proveedores', methods=['GET'])
 @jwt_required()
 def get_proveedores():
     verify_jwt_in_request()
@@ -181,7 +193,7 @@ def get_proveedores():
     proveedores = list(proveedores_collection.find({'bloqueo': False}, {'_id': False}))
     return jsonify(proveedores)
 
-@flask_app.route('/proveedores/busca', methods=['GET'])
+@application.route('/proveedores/busca', methods=['GET'])
 @jwt_required()
 def busca_proveedor():
     current_user = get_jwt_identity()
@@ -195,4 +207,4 @@ def busca_proveedor():
     return jsonify(proveedores)
 
 if __name__ == '__main__':
-    flask_app.run(host="0.0.0.0", port=8080)
+    application.run(host="0.0.0.0", port=8080)

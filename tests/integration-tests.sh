@@ -20,7 +20,7 @@ fi
 
 ENDPOINT="$1"
 USERNAME="admin"
-PASSWORD="adminpassword"
+PASSWORD="Complexity1@"
 
 # CREATE FIRST USER (Admin)
 RESPONSE=$(make_curl_request "PUT" "$ENDPOINT/auth" "{\"username\":\"$USERNAME\", \"password\":\"$PASSWORD\", \"role\":\"admin\"}")
