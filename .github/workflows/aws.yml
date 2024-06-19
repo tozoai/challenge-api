@@ -7,7 +7,7 @@ on:
 
 env:
   AWS_REGION: us-east-2
-  ECR_REPOSITORY: 471112676018.dkr.ecr.us-east-2.amazonaws.com/challenge-image-repository
+  ECR_REPOSITORY: 471112676018.dkr.ecr.us-east-2.amazonaws.com/challenge-image-repository 
 
 jobs:
   deploy:
