@@ -1,18 +1,18 @@
-import datetime
 from flask import Flask, request, jsonify
 from flask_jwt_extended import JWTManager, create_access_token, jwt_required, get_jwt_identity, verify_jwt_in_request
-from flask_limiter.wrappers import Limit
-from werkzeug.security import generate_password_hash, check_password_hash
-from flask_limiter import Limiter, RateLimitExceeded
-from flask_limiter.wrappers import Limit
+from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
+from werkzeug.security import generate_password_hash, check_password_hash
 from pymongo import MongoClient
+from pydantic import BaseModel
 from bson.objectid import ObjectId
+import datetime
 import os
 import re
 
 application = Flask(__name__)
 
+# Configurations
 application.config['JWT_SECRET_KEY'] = os.environ.get('JWT_SECRET_KEY')
 if not application.config['JWT_SECRET_KEY']:
     raise RuntimeError('Environment variable JWT_SECRET_KEY is not set, exiting...')
@@ -21,62 +21,57 @@ application.config['MONGO_URI'] = os.environ.get('MONGO_URI')
 if not application.config['MONGO_URI']:
     raise RuntimeError('Environment variable MONGO_URI is not set, exiting...')
 
+# Initialize JWT
 jwt = JWTManager(application)
 
+# Initialize MongoDB
 client = MongoClient(application.config['MONGO_URI'])
 db = client['data']
 usuarios_collection = db['usuarios']
 proveedores_collection = db['proveedores']
 
 # Models
+class Usuario(BaseModel):
+    username: str
+    password: str
+    role: str
+    fecha_creacion: datetime.datetime = datetime.datetime.now()
+    parent_user: str = None
 
-class Usuario:
-    def __init__(self, username, password, role, creation_data):
-        self.username = username
-        self.password = generate_password_hash(password)
-        self.role = role
-        self.creation_data = datetime.datetime.now()
-        #self.parent_user = parent_user
-        #self.last_login = None
-        
     def save_to_db(self):
+        password_hash = generate_password_hash(self.password)
         usuarios_collection.insert_one({
             'username': self.username,
-            'password': self.password,
+            'password': password_hash,
             'role': self.role,
-            'creation_data': self.creation_data,
-            # 'parent_user': self.parent_user,
-            # 'last_login': self.last_login
+            'fecha_creacion': self.fecha_creacion,
+            'parent_user': self.parent_user
         })
 
-class Proveedor:
-    def __init__(self, nombre, razon_social, nombre_contato, email, direccion_fiscal, tipo_servicio, criticidad, bloqueo):
-        self.nombre = nombre
-        self.razon_social = razon_social
-        self.nombre_contato = nombre_contato
-        self.email = email
-        self.direccion_fiscal = direccion_fiscal
-        self.tipo_servicio = tipo_servicio
-        self.criticidad = criticidad
-        self.bloqueo = bloqueo
-        #self.fecha_creacion = datetime.datetime.now()
-        #self.usuario_creacion = sanitize_get_jwt().get('username')
-        #self.fecha_modificacion = None
- 
+class Proveedor(BaseModel):
+    nombre: str
+    razon_social: str
+    nombre_contacto: str
+    email: str
+    direccion_fiscal: str
+    tipo_servicio: str
+    criticidad: int
+    bloqueo: bool = False
+    fecha_creacion: datetime.datetime = datetime.datetime.now()
+
     def save_to_db(self):
-        result = proveedores_collection.insert_one(self.__dict__) 
-        self._id = result.inserted_id 
+        result = proveedores_collection.insert_one(self.dict())
+        self._id = result.inserted_id
 
 # Security
-
 def sanitize_get_jwt():
     try:
+        verify_jwt_in_request()
         return get_jwt_identity()
     except Exception:
         return None
 
-# Add Rate Limit
-
+# Rate Limiting
 limiter = Limiter(
     get_remote_address,
     app=application,
@@ -93,31 +88,29 @@ def add_security_headers(response):
     return response
 
 # Auth
-    
 def get_user(username):
     return usuarios_collection.find_one({'username': username})
 
 def authenticate_user(username, password):
     user = get_user(username)
     if user and check_password_hash(user['password'], password):
-         return user
+        return user
     return None
-    
+
 def validate_username(username):
     pattern = r'^[A-Za-z0-9]{4,12}$'
     return re.match(pattern, username) is not None
 
 def validate_password(password):
-    pattern = r'^.*[a-zA-Z0])(?=.*\d)[a-zA-Z\d]{8,}$'
+    pattern = (r'^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)[a-zA-Z\d]{8,}$')
     return re.match(pattern, password) is not None
 
 @application.route('/auth', methods=['POST'])
-# strict rate limit 
 @limiter.limit("5 per minute")
 def login():
-    data = request.get_json()
-    username = data.get('username')
-    password = data.get('password')
+    response = request.get_json()
+    username = response.get('username')
+    password = response.get('password')
     user = authenticate_user(username, password)
     if not user:
         return jsonify({"msg": "Bad username or password"}), 401
@@ -127,27 +120,32 @@ def login():
 @application.route('/auth', methods=['PUT'])
 @limiter.limit("3 per minute")
 def create_user():
-    data = request.get_json()
-    username = data.get('username')
-    password = data.get('password')
-    role = data.get('role')
+    response = request.get_json()
+    username = response.get('username')
+    password = response.get('password')
+    role = response.get('role')
     if not validate_username(username):
         return jsonify({"msg": "Invalid Username length"}), 400
     if not validate_password(password):
-        return jsonify({"msg": "Password complexity Enabled"}), 400
-    if get_user(username):
-        return jsonify({"msg": "User already exists"}), 400
-    
-    # Primero usuario no necessita auth
+        return jsonify({"msg": "Password complexity not met"}), 400
+    current_user = sanitize_get_jwt()
+    if not current_user:
+        return jsonify({"msg": "Admin privilege required not current user"}), 403
+    if current_user['role'] != 'admin':
+        return jsonify({"msg": "Admin privilege required not current role"}), 403
+    existing_user = usuarios_collection.find_one({'username': username})
+    if existing_user:
+        return jsonify({"msg": "User already exists"}), 402
+    if username == password:
+        return jsonify({"msg": "Username cannot be the same as password"}), 402
+
+    # First user does not require auth
     if usuarios_collection.count_documents({}) == 0:
-        new_user = Usuario(username, password, "admin")
+        new_user = Usuario(username=username, password=password, role="admin")
         new_user.save_to_db()
         return jsonify({"msg": "Admin user created successfully"}), 201
-    current_user = sanitize_get_jwt()
-    if current_user is None or current_user.get('role') != 'admin':
-       return jsonify({"msg": "Admin privilege required"}), 403
     
-    new_user = Usuario(username, password, role)
+    new_user = Usuario(username=username, password=password, role=role)
     new_user.save_to_db()
     return jsonify({"msg": "User created successfully"}), 201
 
@@ -157,8 +155,8 @@ def create_proveedor():
     current_user = get_jwt_identity()
     if current_user['role'] != 'admin':
         return jsonify({"msg": "Admin privilege required"}), 403
-    data = request.get_json()
-    proveedor = Proveedor(**data)
+    response = request.get_json()
+    proveedor = Proveedor(**response)
     proveedor.save_to_db()
     return jsonify({"msg": "Created successfully"}), 201
 
@@ -208,3 +206,4 @@ def busca_proveedor():
 
 if __name__ == '__main__':
     application.run(host="0.0.0.0", port=8080)
+
