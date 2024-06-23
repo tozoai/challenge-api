@@ -1,5 +1,14 @@
 #!/bin/bash
 
+if [ -z "$1" ]; then
+  echo "Usage: $0 <endpoint>"
+  exit 1
+fi
+
+ENDPOINT="$1"
+USERNAME="$2"
+PASSWORD="$3"
+
 # Function to make a curl request
 make_curl_request() {
     local method="$1"
@@ -12,15 +21,6 @@ make_curl_request() {
         -H "Content-Type: application/json" \
         -d "$data"
 }
-
-if [ -z "$1" ]; then
-  echo "Usage: $0 <endpoint>"
-  exit 1
-fi
-
-ENDPOINT="$1"
-USERNAME="admin"
-PASSWORD="Complexity1@"
 
 # CREATE FIRST USER (Admin)
 RESPONSE=$(make_curl_request "PUT" "$ENDPOINT/auth" "{\"username\":\"$USERNAME\", \"password\":\"$PASSWORD\", \"role\":\"admin\"}")
@@ -37,6 +37,7 @@ if [ "$TOKEN" == "null" ] || [ -z "$TOKEN" ]; then
 fi
 
 echo "Authentication successful."
+echo $TOKEN
 
 # Create dummy users
 for i in {1..3}; do
@@ -60,7 +61,7 @@ for i in {1..3}; do
   "direccion_fiscal": "Direccion Fiscal $i",
   "tipo_servicio": "Servicio $i",
   "criticidad": "Alta",
-  "bloqueo": false
+  "bloqueo": alse
 }
 EOF
   )

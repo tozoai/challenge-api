@@ -4,7 +4,7 @@ from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from werkzeug.security import generate_password_hash, check_password_hash
 from pymongo import MongoClient
-from pydantic import BaseModel
+from pydantic import BaseModel, ValidationError
 from bson.objectid import ObjectId
 import datetime
 import os
@@ -36,7 +36,7 @@ class Usuario(BaseModel):
     password: str
     role: str
     fecha_creacion: datetime.datetime = datetime.datetime.now()
-    parent_user: str = None
+    parent_user: str
 
     def save_to_db(self):
         password_hash = generate_password_hash(self.password)
@@ -55,7 +55,7 @@ class Proveedor(BaseModel):
     email: str
     direccion_fiscal: str
     tipo_servicio: str
-    criticidad: int
+    criticidad: str
     bloqueo: bool = False
     fecha_creacion: datetime.datetime = datetime.datetime.now()
 
@@ -97,10 +97,12 @@ def authenticate_user(username, password):
         return user
     return None
 
+# Username Validation
 def validate_username(username):
-    pattern = r'^[A-Za-z0-9]{4,12}$'
+    pattern = r'[A-Za-z0-9]{4,12}$'
     return re.match(pattern, username) is not None
 
+# Password Complexity enabled
 def validate_password(password):
     pattern = (r'^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)[a-zA-Z\d]{8,}$')
     return re.match(pattern, password) is not None
@@ -130,7 +132,11 @@ def create_user():
         return jsonify({"msg": "Password complexity not met"}), 400
     current_user = sanitize_get_jwt()
     if not current_user:
-        return jsonify({"msg": "Admin privilege required not current user"}), 403
+            if usuarios_collection.count_documents({}) == 0:
+                new_user = Usuario(username=username, password=password, role="admin", fecha_creacion=datetime.datetime.now(), parent_user="root")
+                new_user.save_to_db()
+                return jsonify({"msg": "Admin user created successfully"}), 201
+            return jsonify({"msg": "Admin privilege required"}), 403
     if current_user['role'] != 'admin':
         return jsonify({"msg": "Admin privilege required not current role"}), 403
     existing_user = usuarios_collection.find_one({'username': username})
@@ -138,15 +144,10 @@ def create_user():
         return jsonify({"msg": "User already exists"}), 402
     if username == password:
         return jsonify({"msg": "Username cannot be the same as password"}), 402
-
-    # First user does not require auth
-    if usuarios_collection.count_documents({}) == 0:
-        new_user = Usuario(username=username, password=password, role="admin")
+    try:    
+        new_user = Usuario(username=username, password=password, role=role, parent_user=current_user['username'])
         new_user.save_to_db()
-        return jsonify({"msg": "Admin user created successfully"}), 201
-    
-    new_user = Usuario(username=username, password=password, role=role)
-    new_user.save_to_db()
+    except: ValidationError
     return jsonify({"msg": "User created successfully"}), 201
 
 @application.route('/proveedores', methods=['PUT'])
@@ -156,11 +157,14 @@ def create_proveedor():
     if current_user['role'] != 'admin':
         return jsonify({"msg": "Admin privilege required"}), 403
     response = request.get_json()
-    proveedor = Proveedor(**response)
-    proveedor.save_to_db()
-    return jsonify({"msg": "Created successfully"}), 201
+    try:
+        proveedor = Proveedor(**response)
+        proveedor.save_to_db()
+        return jsonify({"msg": "Created successfully"}), 201
+    except: ValidationError 
+    return jsonify({"msg": "Bad Request"}), 400
 
-@application.route('/proveedores/atualiza/<id>', methods=['PATCH'])
+@application.route('/proveedores/atualiza/<id>', methods=['UPDATE'])
 @jwt_required()
 def update_proveedor(id):
     verify_jwt_in_request()
@@ -205,5 +209,4 @@ def busca_proveedor():
     return jsonify(proveedores)
 
 if __name__ == '__main__':
-    application.run(host="0.0.0.0", port=8080)
-
+    application.run(host="0.0.0.0", port=8080, threaded=True)
