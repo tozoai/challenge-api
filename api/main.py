@@ -14,12 +14,9 @@ application = Flask(__name__)
 
 # Configurations
 application.config['JWT_SECRET_KEY'] = os.environ.get('JWT_SECRET_KEY')
-if not application.config['JWT_SECRET_KEY']:
-    raise RuntimeError('Environment variable JWT_SECRET_KEY is not set, exiting...')
-
 application.config['MONGO_URI'] = os.environ.get('MONGO_URI')
-if not application.config['MONGO_URI']:
-    raise RuntimeError('Environment variable MONGO_URI is not set, exiting...')
+if not application.config['MONGO_URI'] or not application.config['JWT_SECRET_KEY']:
+    raise RuntimeError('Environment variables not set, exiting...')
 
 # Initialize JWT
 jwt = JWTManager(application)
@@ -29,6 +26,7 @@ client = MongoClient(application.config['MONGO_URI'])
 db = client['data']
 usuarios_collection = db['usuarios']
 proveedores_collection = db['proveedores']
+#proveedores_collection.create_index('nombre', unique=True)
 
 # Models
 class Usuario(BaseModel):
@@ -57,6 +55,7 @@ class Proveedor(BaseModel):
     tipo_servicio: str
     criticidad: str
     bloqueo: bool = False
+    parent_user: str
     fecha_creacion: datetime.datetime = datetime.datetime.now()
 
     def save_to_db(self):
@@ -70,6 +69,12 @@ def sanitize_get_jwt():
         return get_jwt_identity()
     except Exception:
         return None
+    
+# sanitize inputs
+def sanitize_string(input_string):
+    pattern = r'[^a-zA-Z0-9\s.,;:!?\-_@#%&()+=]'
+    sanitized_string = re.sub(pattern, '', input_string)
+    return sanitized_string
 
 # Rate Limiting
 limiter = Limiter(
@@ -78,6 +83,7 @@ limiter = Limiter(
     default_limits=["1000 per day", "30 per minute"]
 )
 
+# Security Headers
 @application.after_request 
 def add_security_headers(response):
     response.headers['Strict-Transport-Security'] = 'max-age=31536000; includeSubDomains'
@@ -99,16 +105,20 @@ def authenticate_user(username, password):
 
 # Username Validation
 def validate_username(username):
+    if not username:
+        return False
     pattern = r'[A-Za-z0-9]{4,12}$'
     return re.match(pattern, username) is not None
 
 # Password Complexity enabled
 def validate_password(password):
-    pattern = (r'^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)[a-zA-Z\d]{8,}$')
+    if not password:
+        return False
+    pattern = (r'(?=\D*\d)(?=[^A-Z]*[A-Z])(?=[^a-z]*[a-z])[A-Za-z0-9]{10,}$')
     return re.match(pattern, password) is not None
 
 @application.route('/auth', methods=['POST'])
-@limiter.limit("5 per minute")
+@limiter.limit("20 per minute")
 def login():
     response = request.get_json()
     username = response.get('username')
@@ -120,14 +130,16 @@ def login():
     return jsonify(access_token=access_token), 200            
 
 @application.route('/auth', methods=['PUT'])
-@limiter.limit("3 per minute")
+@limiter.limit("20 per minute")
 def create_user():
     response = request.get_json()
+    if response is None:
+        return jsonify({"msg": "Bad request"}), 400
     username = response.get('username')
     password = response.get('password')
     role = response.get('role')
     if not validate_username(username):
-        return jsonify({"msg": "Invalid Username length"}), 400
+        return jsonify({"msg": "Invalid Username"}), 400
     if not validate_password(password):
         return jsonify({"msg": "Password complexity not met"}), 400
     current_user = sanitize_get_jwt()
@@ -138,7 +150,7 @@ def create_user():
                 return jsonify({"msg": "Admin user created successfully"}), 201
             return jsonify({"msg": "Admin privilege required"}), 403
     if current_user['role'] != 'admin':
-        return jsonify({"msg": "Admin privilege required not current role"}), 403
+        return jsonify({"msg": "Admin privilege required"}), 403
     existing_user = usuarios_collection.find_one({'username': username})
     if existing_user:
         return jsonify({"msg": "User already exists"}), 402
@@ -151,36 +163,45 @@ def create_user():
     return jsonify({"msg": "User created successfully"}), 201
 
 @application.route('/proveedores', methods=['PUT'])
+@limiter.limit("20 per minute")
 @jwt_required()
 def create_proveedor():
     current_user = get_jwt_identity()
     if current_user['role'] != 'admin':
         return jsonify({"msg": "Admin privilege required"}), 403
     response = request.get_json()
+    parent_user = current_user['username']
+    for key, value in response.items():
+        response[key] = sanitize_string(value)
+    response = {**response, 'parent_user': parent_user}
     try:
         proveedor = Proveedor(**response)
         proveedor.save_to_db()
         return jsonify({"msg": "Created successfully"}), 201
-    except: ValidationError 
+    except: ValidationError
     return jsonify({"msg": "Bad Request"}), 400
 
-@application.route('/proveedores/atualiza/<id>', methods=['UPDATE'])
+@application.route('/proveedores', methods=['POST'])
+@limiter.limit("20 per minute")
 @jwt_required()
-def update_proveedor(id):
+def update_proveedor():
     verify_jwt_in_request()
     current_user = get_jwt_identity()
     if current_user['role'] != 'admin':
         return jsonify({"msg": "Admin privilege required"}), 403
-    data = request.get_json()
-    if 'bloqueo' in data:
-        proveedores_collection.update_one({'_id': ObjectId(id)}, {'$set': {'bloqueo': data['bloqueo']}})
-        if data['bloqueo']:
-            return jsonify({"msg": "Proveedor bloqueado!"}), 200
-        return jsonify({"msg": "Proveedor desbloqueado!"}), 200
-    else:
+    req = request.get_json()
+    if not req['_id'] or not req['bloqueo']:
         return jsonify({"msg": "Bad Request"}), 400
+    id = req['_id']
+    try:
+        proveedores_collection.update_one({'_id': ObjectId(id)}, {'$set': {'bloqueo': req['bloqueo']}})
+        if req['bloqueo']:
+            return jsonify({"msg": "bloqueo cambiado!"}), 200
+    except: ValidationError
+    return jsonify({"msg": "Bad Request"}), 400
 
 @application.route('/proveedores', methods=['GET'])
+@limiter.limit("20 per minute")
 @jwt_required()
 def get_proveedores():
     verify_jwt_in_request()
@@ -196,14 +217,21 @@ def get_proveedores():
     return jsonify(proveedores)
 
 @application.route('/proveedores/busca', methods=['GET'])
+@limiter.limit("20 per minute")
 @jwt_required()
 def busca_proveedor():
     current_user = get_jwt_identity()
     query_params = ['nombre', 'criticidad', 'tipo_servicio']
-    query = {param: request.args[param] for param in query_params if param in request.args}
-    if current_user['role'] != 'admin':
-        query['bloqueo'] = False
-    proveedores = list(proveedores_collection.find(query, {'_id': False}))
+    if not any(param in request.args for param in query_params):
+        return jsonify({"msg": "Bad Request"}), 400
+    query = {}
+    for param in query_params:
+        if param in request.args:
+            query[param] = {'$regex': request.args[param], '$options': 'i'}
+    if current_user['role'] == 'admin':
+        proveedores = list(proveedores_collection.find(query, {'_id': False}))
+    else:
+        proveedores = list(proveedores_collection.find(query, {'bloqueo': False}, {'_id': False}))
     if not proveedores:
         return jsonify({"msg": "Not Found"}), 404
     return jsonify(proveedores)
