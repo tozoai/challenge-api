@@ -10,7 +10,7 @@ COPY . .
 RUN pip3 install --no-cache-dir -r api/requirements.txt
 
 # Expose port 80
-EXPOSE 80
+EXPOSE 8080
 
 # Run app.py when the container launches
 CMD ["python3", "api/main.py"]
