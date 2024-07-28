@@ -1,0 +1,60 @@
+{
+  "swagger": "2.0",
+  "info": {
+    "title": "Challenge-API",
+    "version": "1.0.0"
+  },
+  "host": "localhost:8080",
+  "schemes": [ "http" ],
+  "basePath": "/",
+  "paths": {
+    "/auth": {
+        "post": {
+          "summary": "authenticate",
+          "description": "Returns the JWT token",
+          "parameters": [
+            {
+              "name": "username",
+              "in": "formData",
+              "description": "The username of the user",
+              "required": true,
+              "type": "string"
+            },
+            {
+              "name": "password",
+              "in": "formData",
+              "description": "The password of the user",
+              "required": true,
+              "type": "string"
+            }
+          ],
+          "responses": {
+            "200": {
+              "description": "A successful response",
+              "examples": {
+                "application/json": {
+                  "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJmcmVzaCI6ZmFsc2UsImlhdCI6MTcyMTkzMDQzNiwianRpIjoiY2YzYTc2YTYtNmU4Zi00ZDk1LWJjOGMtNDk0MzEzOGJkNWYxIiwidHlwZSI6ImFjY2VzcyIsInN1YiI6eyJ1c2VybmFtZSI6ImFkbWluIiwicm9sZSI6ImFkbWluIn0sIm5iZiI6MTcyMTkzMDQzNiwiY3NyZiI6ImQ5NmY0ODhhLTUwNTUtNDZkZi05NzEzLWY1M2FmYTBjYWE2YyIsImV4cCI6MTcyMTkzMTMzNn0.7d1Z6DU_yOWBBvrS6JjZBtsgNWmR5oOOPwN0cn44SoA"
+                }
+              }
+            },
+            "/auth/create": {
+              "post": {
+                "summary": "create user",
+                "description": "Returns user created",
+                "responses": {
+                  "200": {
+                    "description": "A successful response",
+                    "examples": {
+                      "application/json": {
+                        "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJmcmVzaCI6ZmFsc2UsImlhdCI6MTcyMTkzMDQzNiwianRpIjoiY2YzYTc2YTYtNmU4Zi00ZDk1LWJjOGMtNDk0MzEzOGJkNWYxIiwidHlwZSI6ImFjY2VzcyIsInN1YiI6eyJ1c2VybmFtZSI6ImFkbWluIiwicm9sZSI6ImFkbWluIn0sIm5iZiI6MTcyMTkzMDQzNiwiY3NyZiI6ImQ5NmY0ODhhLTUwNTUtNDZkZi05NzEzLWY1M2FmYTBjYWE2YyIsImV4cCI6MTcyMTkzMTMzNn0.7d1Z6DU_yOWBBvrS6JjZBtsgNWmR5oOOPwN0cn44SoA"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }

@@ -1,0 +1,363 @@
+{
+  "swagger": "2.0",
+  "info": {
+    "description": "This is the API documentation for My API",
+    "version": "1.0.0",
+    "title": "My API",
+    "termsOfService": "http://swagger.io/terms/",
+    "contact": {
+      "email": "support@myapi.com"
+    },
+    "license": {
+      "name": "Apache 2.0",
+      "url": "http://www.apache.org/licenses/LICENSE-2.0.html"
+    }
+  },
+  "host": "localhost:8080",
+  "basePath": "/",
+  "tags": [
+    {
+      "name": "usuario",
+      "description": "Operations related to users"
+    },
+    {
+      "name": "proveedor",
+      "description": "Operations related to providers"
+    }
+  ],
+  "schemes": [
+    "http"
+  ],
+  "paths": {
+    "/usuarios": {
+      "get": {
+        "tags": ["usuario"],
+        "summary": "Get all users",
+        "description": "Retrieve a list of all users",
+        "operationId": "getUsuarios",
+        "produces": ["application/json"],
+        "responses": {
+          "200": {
+            "description": "A list of users",
+            "schema": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/Usuario"
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": ["usuario"],
+        "summary": "Create a new user",
+        "description": "Create a new user with the provided details",
+        "operationId": "createUsuario",
+        "consumes": ["application/json"],
+        "produces": ["application/json"],
+        "parameters": [
+          {
+            "in": "body",
+            "name": "body",
+            "description": "User object",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/Usuario"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "User created"
+          },
+          "400": {
+            "description": "Invalid input"
+          }
+        }
+      }
+    },
+    "/usuarios/{username}": {
+      "get": {
+        "tags": ["usuario"],
+        "summary": "Get a user by username",
+        "description": "Retrieve a user by their username",
+        "operationId": "getUsuarioByUsername",
+        "produces": ["application/json"],
+        "parameters": [
+          {
+            "name": "username",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "User details",
+            "schema": {
+              "$ref": "#/definitions/Usuario"
+            }
+          },
+          "404": {
+            "description": "User not found"
+          }
+        }
+      },
+      "put": {
+        "tags": ["usuario"],
+        "summary": "Update a user by username",
+        "description": "Update a user's details by their username",
+        "operationId": "updateUsuario",
+        "consumes": ["application/json"],
+        "produces": ["application/json"],
+        "parameters": [
+          {
+            "name": "username",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "in": "body",
+            "name": "body",
+            "description": "Updated user object",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/Usuario"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "User updated"
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "404": {
+            "description": "User not found"
+          }
+        }
+      },
+      "delete": {
+        "tags": ["usuario"],
+        "summary": "Delete a user by username",
+        "description": "Delete a user by their username",
+        "operationId": "deleteUsuario",
+        "produces": ["application/json"],
+        "parameters": [
+          {
+            "name": "username",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "User deleted"
+          },
+          "404": {
+            "description": "User not found"
+          }
+        }
+      }
+    },
+    "/proveedores": {
+      "get": {
+        "tags": ["proveedor"],
+        "summary": "Get all providers",
+        "description": "Retrieve a list of all providers",
+        "operationId": "getProveedores",
+        "produces": ["application/json"],
+        "responses": {
+          "200": {
+            "description": "A list of providers",
+            "schema": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/Proveedor"
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": ["proveedor"],
+        "summary": "Create a new provider",
+        "description": "Create a new provider with the provided details",
+        "operationId": "createProveedor",
+        "consumes": ["application/json"],
+        "produces": ["application/json"],
+        "parameters": [
+          {
+            "in": "body",
+            "name": "body",
+            "description": "Provider object",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/Proveedor"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Provider created"
+          },
+          "400": {
+            "description": "Invalid input"
+          }
+        }
+      }
+    },
+    "/proveedores/{nombre}": {
+      "get": {
+        "tags": ["proveedor"],
+        "summary": "Get a provider by nombre",
+        "description": "Retrieve a provider by their nombre",
+        "operationId": "getProveedorByNombre",
+        "produces": ["application/json"],
+        "parameters": [
+          {
+            "name": "nombre",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Provider details",
+            "schema": {
+              "$ref": "#/definitions/Proveedor"
+            }
+          },
+          "404": {
+            "description": "Provider not found"
+          }
+        }
+      },
+      "put": {
+        "tags": ["proveedor"],
+        "summary": "Update a provider by nombre",
+        "description": "Update a provider's details by their nombre",
+        "operationId": "updateProveedor",
+        "consumes": ["application/json"],
+        "produces": ["application/json"],
+        "parameters": [
+          {
+            "name": "nombre",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "in": "body",
+            "name": "body",
+            "description": "Updated provider object",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/Proveedor"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Provider updated"
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "404": {
+            "description": "Provider not found"
+          }
+        }
+      },
+      "delete": {
+        "tags": ["proveedor"],
+        "summary": "Delete a provider by nombre",
+        "description": "Delete a provider by their nombre",
+        "operationId": "deleteProveedor",
+        "produces": ["application/json"],
+        "parameters": [
+          {
+            "name": "nombre",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Provider deleted"
+          },
+          "404": {
+            "description": "Provider not found"
+          }
+        }
+      }
+    }
+  },
+  "definitions": {
+    "Usuario": {
+      "type": "object",
+      "required": ["username", "password", "role", "parent_user"],
+      "properties": {
+        "username": {
+          "type": "string"
+        },
+        "password": {
+          "type": "string"
+        },
+        "role": {
+          "type": "string"
+        },
+        "fecha_creacion": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "parent_user": {
+          "type": "string"
+        }
+      }
+    },
+    "Proveedor": {
+      "type": "object",
+      "required": ["nombre", "razon_social", "nombre_contacto", "email", "direccion_fiscal", "tipo_servicio", "criticidad", "parent_user"],
+      "properties": {
+        "nombre": {
+          "type": "string"
+        },
+        "razon_social": {
+          "type": "string"
+        },
+        "nombre_contacto": {
+          "type": "string"
+        },
+        "email": {
+          "type": "string"
+        },
+        "direccion_fiscal": {
+          "type": "string"
+        },
+        "tipo_servicio": {
+          "type": "string"
+        },
+        "criticidad": {
+          "type": "string"
+        },
+        "bloqueo": {
+          "type": "boolean"
+        },
+        "parent_user": {
+          "type": "string"
+        },
+        "fecha_creacion": {
+          "type": "string",
+          "format": "date-time"
+        }
+      }
+    }
+  }
+}
+
