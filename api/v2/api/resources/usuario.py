@@ -1,13 +1,12 @@
 from flask import jsonify
 from flask_restful import Resource, reqparse
 from flask_restful_swagger import swagger
-from flask_jwt_extended import JWTManager, create_access_token, jwt_required, get_jwt_identity, verify_jwt_in_request
-from functools import wraps
+from flask_jwt_extended import create_access_token, jwt_required, get_jwt_identity
+from pydantic import SecretStr
 from api.models.usuario_model import Usuario
 from api.utils.rbac import role_required
 from werkzeug.security import generate_password_hash, check_password_hash
 from pymongo import MongoClient
-from bson import ObjectId
 import os
 import datetime
 import json
@@ -27,7 +26,7 @@ usuario_parser.add_argument('parent_user', type=str, required=False, help='Paren
 
 class UsuarioAuthResource(Resource):
     @swagger.operation(
-        notes='Authenticate a user',
+        notes='Autentica usuarios',
         responseClass=Usuario.__name__,
         nickname='post'
     )
@@ -38,15 +37,16 @@ class UsuarioAuthResource(Resource):
             return {'message': 'Invalid credentials'}, 401
         access_token = create_access_token(identity=str(usuario['role']))
         return {'access_token': access_token}, 200
-    
+
+  
 class UsuarioResource(Resource):
     @swagger.operation(
         notes='Get a user by username',
-        responseClass=Usuario.__name__,
-        nickname='get'
+        responseClass=Usuario,
+        nickname='getUsuario'
     )
     
-    @role_required('admin')
+    @role_required('admin')  
     def get(self, username):
         usuario = usuarios_collection.find_one({'username': username})
         if not usuario:
@@ -56,17 +56,11 @@ class UsuarioResource(Resource):
 
     @swagger.operation(
         notes='Delete a user by username',
-        responseMessages=[
-            {
-                'code': 204,
-                'message': 'User deleted'
-            },
-            {
-                'code': 404,
-                'message': 'User not found'
-            }
-        ]
+        responseClass=Usuario,
+        nickname='deleteUsuario'
     )
+    
+    @role_required('admin')
     def delete(self, username):
         result = usuarios_collection.delete_one({'username': username})
         if result.deleted_count == 0:
@@ -75,9 +69,10 @@ class UsuarioResource(Resource):
 
     @swagger.operation(
         notes='Update a user by username',
-        responseClass=Usuario.__name__,
+        responseClass=Usuario,
         nickname='put'
     )
+    @role_required('admin')
     def put(self, username):
         data = usuario_parser.parse_args()
         password_hash = generate_password_hash(data['password'])
@@ -96,9 +91,10 @@ class UsuarioResource(Resource):
 
     @swagger.operation(
         notes='Create a new user',
-        responseClass=Usuario.__name__,
+        responseClass=Usuario,
         nickname='post'
     )
+    @role_required('admin')
     def post(self):
         data = usuario_parser.parse_args()
         password_hash = generate_password_hash(data['password'])
@@ -112,14 +108,3 @@ class UsuarioResource(Resource):
         result = usuarios_collection.insert_one(new_user)
         new_user['_id'] = str(result.inserted_id)
         return new_user, 201
-
-    @swagger.operation(
-        notes='Get a list of all users',
-        responseClass=Usuario.__name__,
-        nickname='get'
-    )
-    def get(self):
-        usuarios = list(usuarios_collection.find())
-        for usuario in usuarios:
-            usuario['_id'] = str(usuario['_id'])
-        return json.loads(json.dumps(usuarios, default=str))
