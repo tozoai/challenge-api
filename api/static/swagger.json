@@ -1,0 +1,435 @@
+{
+  "swagger": "2.0",
+  "info": {
+    "title": "Proveedores API",
+    "description": "API para gestionar proveedores",
+    "version": "1.0.0"
+  },
+  "basePath": "/",
+  "schemes": [ "http" ],
+  "paths": {
+    "/proveedores": {
+      "get": {
+        "tags": [ "Proveedor" ],
+        "summary": "Lista todos los proveedores",
+        "description": "Lista todos los proveedores. Requiere autenticación JWT.",
+        "operationId": "getProveedores",
+        "produces": [ "application/json" ],
+        "responses": {
+          "200": {
+            "description": "Operación exitosa",
+            "schema": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/Proveedor"
+              }
+            }
+          },
+          "400": {
+            "description": "Requisición malformada"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        },
+        "security": [
+          {
+            "jwt": []
+          }
+        ]
+      },
+      "post": {
+        "tags": [ "Proveedor" ],
+        "summary": "Crea un proveedor",
+        "description": "Crea un nuevo proveedor. Requiere autenticación JWT.",
+        "operationId": "createProveedor",
+        "consumes": [ "application/json" ],
+        "produces": [ "application/json" ],
+        "parameters": [
+          {
+            "in": "body",
+            "name": "body",
+            "description": "Datos del nuevo proveedor",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/Proveedor"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Proveedor creado con éxito"
+          },
+          "400": {
+            "description": "Requisición malformada"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        },
+        "security": [
+          {
+            "jwt": []
+          }
+        ]
+      },
+      "put": {
+        "tags": [ "Proveedor" ],
+        "summary": "Actualiza un proveedor",
+        "description": "Actualiza un proveedor existente. Requiere autenticación JWT.",
+        "operationId": "updateProveedor",
+        "consumes": [ "application/json" ],
+        "produces": [ "application/json" ],
+        "parameters": [
+          {
+            "in": "body",
+            "name": "body",
+            "description": "Datos del proveedor a actualizar",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/Proveedor"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Proveedor actualizado con éxito"
+          },
+          "400": {
+            "description": "Requisición malformada"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Admin privilege required"
+          },
+          "404": {
+            "description": "Proveedor no encontrado"
+          }
+        },
+        "security": [
+          {
+            "jwt": []
+          }
+        ]
+      },
+      "delete": {
+        "tags": [ "Proveedor" ],
+        "summary": "Elimina un proveedor",
+        "description": "Elimina un proveedor existente. Requiere autenticación JWT y rol de admin.",
+        "operationId": "deleteProveedor",
+        "produces": [ "application/json" ],
+        "parameters": [
+          {
+            "in": "body",
+            "name": "body",
+            "description": "_id del proveedor a eliminar",
+            "required": true,
+            "schema": {
+              "type": "object",
+              "properties": {
+                "_id": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Proveedor eliminado con éxito"
+          },
+          "400": {
+            "description": "Requisición malformada"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Acceso negado"
+          },
+          "404": {
+            "description": "Proveedor no encontrado"
+          }
+        },
+        "security": [
+          {
+            "jwt": []
+          }
+        ]
+      }
+    },
+    "/usuarios/auth": {
+      "post": {
+        "tags": [ "Usuario" ],
+        "summary": "Autentica usuarios",
+        "description": "Autentica usuarios y genera un token JWT.",
+        "operationId": "authUsuario",
+        "consumes": [ "application/json" ],
+        "produces": [ "application/json" ],
+        "parameters": [
+          {
+            "in": "body",
+            "name": "body",
+            "description": "Credenciales del usuario",
+            "required": true,
+            "schema": {
+              "type": "object",
+              "properties": {
+                "username": {
+                  "type": "string"
+                },
+                "password": {
+                  "type": "string"
+                }
+              },
+              "required": [ "username", "password" ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Autenticación exitosa",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "access_token": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Requisición malformada"
+          },
+          "401": {
+            "description": "Autenticación fallida"
+          }
+        }
+      }
+    },
+    "/usuarios": {
+      "get": {
+        "tags": [ "Usuario" ],
+        "summary": "Lista todos los usuarios",
+        "description": "Lista todos los usuarios. Requiere autenticación JWT.",
+        "operationId": "getUsuarios",
+        "produces": [ "application/json" ],
+        "responses": {
+          "200": {
+            "description": "Operación exitosa",
+            "schema": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/Usuario"
+              }
+            }
+          },
+          "400": {
+            "description": "Requisición malformada"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        },
+        "security": [
+          {
+            "jwt": []
+          }
+        ]
+      },
+      "post": {
+        "tags": [ "Usuario" ],
+        "summary": "Crea un usuario",
+        "description": "Crea un nuevo usuario. Requiere autenticación JWT.",
+        "operationId": "createUsuario",
+        "consumes": [ "application/json" ],
+        "produces": [ "application/json" ],
+        "parameters": [
+          {
+            "in": "body",
+            "name": "body",
+            "description": "Datos del nuevo usuario",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/Usuario"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Usuario creado con éxito"
+          },
+          "400": {
+            "description": "Requisición malformada"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        },
+        "security": [
+          {
+            "jwt": []
+          }
+        ]
+      },
+      "put": {
+        "tags": [ "Usuario" ],
+        "summary": "Actualiza un usuario",
+        "description": "Actualiza un usuario existente. Requiere autenticación JWT.",
+        "operationId": "updateUsuario",
+        "consumes": [ "application/json" ],
+        "produces": [ "application/json" ],
+        "parameters": [
+          {
+            "in": "body",
+            "name": "body",
+            "description": "Datos del usuario a actualizar",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/Usuario"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Usuario actualizado con éxito"
+          },
+          "400": {
+            "description": "Requisición malformada"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Admin privilege required"
+          },
+          "404": {
+            "description": "Usuario no encontrado"
+          }
+        },
+        "security": [
+          {
+            "jwt": []
+          }
+        ]
+      },
+      "delete": {
+        "tags": [ "Usuario" ],
+        "summary": "Elimina un usuario",
+        "description": "Elimina un usuario existente. Requiere autenticación JWT y rol de admin.",
+        "operationId": "deleteUsuario",
+        "produces": [ "application/json" ],
+        "parameters": [
+          {
+            "in": "body",
+            "name": "body",
+            "description": "_id del usuario a eliminar",
+            "required": true,
+            "schema": {
+              "type": "object",
+              "properties": {
+                "_id": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Usuario eliminado con éxito"
+          },
+          "400": {
+            "description": "Requisición malformada"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Acceso negado"
+          },
+          "404": {
+            "description": "Usuario no encontrado"
+          }
+        },
+        "security": [
+          {
+            "jwt": []
+          }
+        ]
+      }
+    }
+  },
+  "definitions": {
+    "Proveedor": {
+      "type": "object",
+      "properties": {
+        "nombre": {
+          "type": "string"
+        },
+        "razon_social": {
+          "type": "string"
+        },
+        "nombre_contacto": {
+          "type": "string"
+        },
+        "email": {
+          "type": "string"
+        },
+        "direccion_fiscal": {
+          "type": "string"
+        },
+        "tipo_servicio": {
+          "type": "string"
+        },
+        "criticidad": {
+          "type": "string"
+        },
+        "bloqueo": {
+          "type": "boolean"
+        },
+        "parent_user": {
+          "type": "string"
+        },
+        "fecha_creacion": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [ "nombre", "razon_social", "nombre_contacto", "email", "direccion_fiscal", "tipo_servicio", "criticidad" ]
+    },
+    "Usuario": {
+      "type": "object",
+      "required": [ "username", "password", "role", "parent_user" ],
+      "properties": {
+        "username": {
+          "type": "string"
+        },
+        "password": {
+          "type": "string"
+        },
+        "role": {
+          "type": "string"
+        },
+        "fecha_creacion": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "parent_user": {
+          "type": "string"
+        }
+      }
+    }
+  },
+  "securityDefinitions": {
+    "jwt": {
+      "type": "apiKey",
+      "name": "Authorization",
+      "in": "header",
+      "description": "JWT Authorization header using the Bearer scheme. Example: \"Authorization: Bearer {token}\""
+    }
+  }
+}
+

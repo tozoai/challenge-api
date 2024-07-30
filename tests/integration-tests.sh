@@ -1,7 +1,7 @@
 #!/bin/bash
 
 if [ -z "$1" ]; then
-  echo "Usage: $0 <endpoint>"
+  echo "Usage: $0 <endpoint> <username> <password>"
   exit 1
 fi
 
@@ -52,7 +52,7 @@ echo "Response from testing invalid username:"
 echo $(make_curl_request "PUT" "$ENDPOINT/auth" "{\"username\":\"$USERNAME\", \"password\":\"Admasdasdasin123\", \"role\":\"admin\"}" "$TOKEN")
 echo -e 
 echo "Response creating unprivileged user: $RESPONSE"
-echo $(make_curl_request "PUT" "$ENDPOINT/auth" "{\"username\":\"user\", \"password\":\"Osdlsdkfjhsdkjh\", \"role\":\"usuario\"}" "$TOKEN")
+echo $(make_curl_request "PUT" "$ENDPOINT/auth" "{\"username\":\"usuario\", \"password\":\"Password123\", \"role\":\"usuario\"}" "$TOKEN")
 echo -e 
 echo "perform authentication with unprivileged user"
 USERTOKEN=$(make_curl_request "POST" "$ENDPOINT/auth" "{\"username\":\"usuario\", \"password\":\"Password123\"}" | jq -r '.access_token')
