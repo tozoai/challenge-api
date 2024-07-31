@@ -72,11 +72,8 @@ class UsuarioResource(Resource):
     
     @role_required('admin')  
     def get(self):
-        usuario = usuarios_collection.list({})
-        if not usuario:
-            return {'message': 'User not found'}, 404
-        usuario['_id'] = str(usuario['_id'])  
-        return json.loads(json.dumps(usuario, default=str))
+        users = list(usuarios_collection.find({}))
+        return json.loads(json.dumps(users, default=str))
 
     @swagger.operation(
         notes='Delete a user by username',

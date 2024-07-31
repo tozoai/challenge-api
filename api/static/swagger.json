@@ -2,7 +2,7 @@
   "swagger": "2.0",
   "info": {
     "title": "Proveedores API",
-    "description": "API para gestionar proveedores",
+    "description": "API para gestionar proveedores y usuarios",
     "version": "1.0.0"
   },
   "basePath": "/",

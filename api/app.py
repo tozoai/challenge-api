@@ -1,4 +1,4 @@
-from flask import Flask
+from flask import Flask, jsonify
 from flask_restful import Api
 from flask_cors import CORS
 from flask_swagger_ui import get_swaggerui_blueprint
@@ -13,6 +13,9 @@ app.config['JWT_SECRET_KEY'] = os.environ.get('JWT_SECRET_KEY')
 app.config['MONGO_URI'] = os.environ.get('MONGO_URI')
 if not app.config['MONGO_URI'] or not app.config['JWT_SECRET_KEY']:
     raise RuntimeError('Environment variables MONGO_URI or JWT_SECRET_KEY not set, exiting...')
+
+app.config['PROPAGATE_EXCEPTIONS'] = True
+
 
 # Swagger UI configuration
 SWAGGER_URL = '/docs'
