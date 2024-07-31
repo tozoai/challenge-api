@@ -6,7 +6,7 @@ services:
     ports:
       - "8080:8080"
     environment:
-      - JWT_SECRET_KEY=kzGLrfIQsp0d$823f5b562a681be74b11723b3943a492692i
+      - JWT_SECRET_KEY=kzGLrfIQsp0d823f5b562a681be74b11723b3943a492692i
       - MONGO_URI=mongodb://db:27017
     depends_on:
       - db
