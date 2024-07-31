@@ -16,13 +16,13 @@ proveedores_collection = db['proveedores']
 
 all_attributes = reqparse.RequestParser()
 all_attributes.add_argument('_id', type=ObjectId, required=False, help='ID is optional except for delete and updates')
-all_attributes.add_argument('nombre', type=str , required=True, help='Nombre no puede estar vacio')
-all_attributes.add_argument('tipo_servicio', type=str, required=True, help='Tipo Servicio no puede estar vacio')
-all_attributes.add_argument('criticidad', type=str, required=True, help='Criticidad no puede estar vacio')
+all_attributes.add_argument('nombre', type=str , required=False, help='Nombre no puede estar vacio')
+all_attributes.add_argument('tipo_servicio', type=str, required=False, help='Tipo Servicio no puede estar vacio')
+all_attributes.add_argument('criticidad', type=str, required=False, help='Criticidad no puede estar vacio')
 all_attributes.add_argument('razon_social', type=str, required=False, help='Razon Social no puede estar vacio')
 all_attributes.add_argument('nombre_contacto', type=str, required=False, help='Nombre Contacto no puede estar vacio')
 all_attributes.add_argument('email', type=str, required=False, help='Email no puede estar vacio')
-all_attributes.add_argument('direccion_fiscal', type=str, required=True, help='Direccion Fiscal no puede estar vacio')
+all_attributes.add_argument('direccion_fiscal', type=str, required=False, help='Direccion Fiscal no puede estar vacio')
 all_attributes.add_argument('bloqueo', type=str, required=False, help='Bloqueo is optional')
 
 class ProveedorResource(Resource):

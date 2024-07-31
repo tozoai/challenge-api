@@ -76,7 +76,7 @@
       "put": {
         "tags": [ "Proveedor" ],
         "summary": "Actualiza un proveedor",
-        "description": "Actualiza un proveedor existente. Requiere autenticación JWT.",
+        "description": "Actualiza un proveedor existente. Requiere autenticación JWT y rol de admin para cambiar bloqueo",
         "operationId": "updateProveedor",
         "consumes": [ "application/json" ],
         "produces": [ "application/json" ],
@@ -84,10 +84,18 @@
           {
             "in": "body",
             "name": "body",
-            "description": "Datos del proveedor a actualizar",
+            "description": "_id del proveedor a actualizar",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/Proveedor"
+              "type": "object",
+              "properties": {
+                "_id": {
+                  "type": "string"
+                },
+                "bloqueo": {
+                  "type": "boolean"
+                }
+              }
             }
           }
         ],

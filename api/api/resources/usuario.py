@@ -128,5 +128,4 @@ class UsuarioResource(Resource):
                 )
         
         result = usuarios_collection.insert_one(nuevo_usuario.model_dump())
-        nuevo_usuario['_id'] = str(result.inserted_id)
         return nuevo_usuario, 201
