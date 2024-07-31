@@ -6,4 +6,4 @@ class Usuario(BaseModel):
     password: str
     role: str
     fecha_creacion: datetime = datetime.now()
-    parent_user: str
+    parent_user: str = "TODO"
