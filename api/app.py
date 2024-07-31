@@ -13,7 +13,6 @@ app.config['JWT_SECRET_KEY'] = os.environ.get('JWT_SECRET_KEY')
 app.config['MONGO_URI'] = os.environ.get('MONGO_URI')
 if not app.config['MONGO_URI'] or not app.config['JWT_SECRET_KEY']:
     raise RuntimeError('Environment variables MONGO_URI or JWT_SECRET_KEY not set, exiting...')
-
 app.config['PROPAGATE_EXCEPTIONS'] = True
 
 

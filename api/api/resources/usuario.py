@@ -72,7 +72,7 @@ class UsuarioResource(Resource):
     
     @role_required('admin')  
     def get(self):
-        users = list(usuarios_collection.find({}))
+        users = list(usuarios_collection.find({}, {'password': 0}))
         return json.loads(json.dumps(users, default=str))
 
     @swagger.operation(
