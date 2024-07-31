@@ -127,5 +127,9 @@ class UsuarioResource(Resource):
                 fecha_creacion=datetime.datetime.now()
                 )
         
-        result = usuarios_collection.insert_one(nuevo_usuario.model_dump())
-        return nuevo_usuario, 201
+        try:
+            usuarios_collection.insert_one(nuevo_usuario.model_dump())
+            return  'Usuario creado con succeso', 201
+        except ValidationError:
+            return {'message': 'Requisicion malformada'}, 400
+
