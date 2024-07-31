@@ -1,6 +1,6 @@
 from flask_restful import Resource, reqparse
 from flask_restful_swagger import swagger
-from flask_jwt_extended import create_access_token, jwt_required, get_jwt_identity
+from flask_jwt_extended import create_access_token
 from api.models.usuario_model import Usuario
 from api.utils.rbac import role_required
 from pydantic import ValidationError
@@ -71,8 +71,8 @@ class UsuarioResource(Resource):
     )
     
     @role_required('admin')  
-    def get(self, username):
-        usuario = usuarios_collection.find_one({'username': username})
+    def get(self):
+        usuario = usuarios_collection.list({})
         if not usuario:
             return {'message': 'User not found'}, 404
         usuario['_id'] = str(usuario['_id'])  
@@ -118,6 +118,7 @@ class UsuarioResource(Resource):
         responseClass=Usuario,
         nickname='postUsuario'
     )
+    
     @role_required('admin')
     def post(self):
         data = usuario_parser.parse_args()
