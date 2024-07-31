@@ -11,5 +11,4 @@ class Proveedor(BaseModel):
     tipo_servicio: str
     criticidad: str
     bloqueo: bool = False
- #   parent_user: Optional[str] = None
     fecha_creacion: datetime = datetime.now()

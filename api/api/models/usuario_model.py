@@ -1,9 +1,9 @@
 from datetime import datetime
-from pydantic import BaseModel, SecretStr
+from pydantic import BaseModel
 
 class Usuario(BaseModel):
     username: str
-    password: SecretStr
+    password: str
     role: str
     fecha_creacion: datetime = datetime.now()
     parent_user: str

@@ -78,7 +78,7 @@ class ProveedorResource(Resource):
         proveedor_id = data.pop('_id', None)
        
         if not proveedor_id:
-            return {'message': 'ID es necesario'}, 400
+            return {'message': '_id es necesario'}, 400
         
         if get_jwt_identity() != 'admin':
             return {'message': 'Admin privilege required'}, 403
